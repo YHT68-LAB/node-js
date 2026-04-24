@@ -36,7 +36,7 @@ Only test users can authorize the app while it is in testing mode.
 
 ### Configure `gmail-api.config.json`
 
-This project reads Gmail credential paths from [`gmail-api.config.json`](/c:/dev/yhtang/node-js/gmail/gmail-api.config.json).
+This project reads Gmail credential paths from [`gmail-api.config.json`](./gmail-api.config.json).
 
 Example:
 
@@ -54,23 +54,23 @@ Example:
 
 Fields:
 
-* `clientSecret`: Absolute path to the Google OAuth client credentials JSON.
-* `token`: Absolute path to the Gmail OAuth token file created later by `npm run manageToken`.
-* `tokenCopy`: Local project-side copied token file.
+- `clientSecret`: Absolute path to the Google OAuth client credentials JSON.
+- `token`: Absolute path to the Gmail OAuth token file created later by `npm run manageToken`.
+- `tokenCopy`: Local project-side copied token file.
 
 How it is used:
 
-* [`auth.ts`](/c:/dev/yhtang/node-js/gmail/src/auth.ts) loads this file.
-* `paths.clientSecret` is used to create the Google OAuth client.
-* `paths.token` is used to load the saved Gmail token.
-* If the token file is missing, the app asks you to generate it first.
+- [`auth.ts`](./src/auth.ts) loads this file.
+- `paths.clientSecret` is used to create the Google OAuth client.
+- `paths.token` is used to load the saved Gmail token.
+- If the token file is missing, the app asks you to generate it first.
 
 Notes:
 
-* `clientSecret` and `token` can live outside the repo.
-* Update the paths on each machine if your local credential locations are different.
-* `gmail-token.copy.json` is only a project helper copy and does not replace the real token path in `paths.token`.
-* `gmail-token.copy.json` is git-ignored, so the copied local token file will not be committed.
+- `clientSecret` and `token` can live outside the repo.
+- Update the paths on each machine if your local credential locations are different.
+- `gmail-token.copy.json` is only a project helper copy and does not replace the real token path in `paths.token`.
+- `gmail-token.copy.json` is git-ignored, so the copied local token file will not be committed.
 
 ## 2. Manage Token
 
@@ -89,8 +89,8 @@ The script now tries to make the flow easier:
 
 If the browser does not open or the automatic callback flow times out, the script falls back to manual mode and lets you paste either:
 
-* the full redirected URL, or
-* just the `code` value
+- the full redirected URL, or
+- just the `code` value
 
 Manual fallback steps:
 
@@ -102,8 +102,8 @@ Manual fallback steps:
 
 What happens next:
 
-* The token is saved to the path configured in `gmail-api.config.json`.
-* A local helper copy is written to `gmail-token.copy.json`.
+- The token is saved to the path configured in `gmail-api.config.json`.
+- A local helper copy is written to `gmail-token.copy.json`.
 
 You usually only need to do this again if the token expires, is revoked, or you switch accounts.
 
@@ -135,32 +135,32 @@ This script runs:
 
 What it does:
 
-* Starts the review flow from [`index.ts`](/c:/dev/yhtang/node-js/gmail/src/index.ts).
-* Connects to Gmail using the configured OAuth files.
-* Fetches emails from:
-  * `jobalerts-noreply@linkedin.com` (LinkedIn)
-  * `noreply@glassdoor.com` (Glassdoor)
-  * `jobalert@lensa.com` (Lensa)
-* Parses job entries from those emails.
-* Generates full + filtered HTML review files (per source), for example:
-  * `Results/Linked-In-Jobs-Review.html`
-  * `Results/Linked-In-Jobs-Review-Filtered.html`
-  * `Results/Glassdoor-Jobs-Review.html`
-  * `Results/Glassdoor-Jobs-Review-Filtered.html`
-  * `Results/Lensa-Jobs-Review.html`
-  * `Results/Lensa-Jobs-Review-Filtered.html`
-* In normal mode (`reviewJobs`), filtered review uses in-memory objects (no JSON read/write I/O in the pipeline).
-* In debug mode (`reviewJobs:debug`), JSON snapshots are also written for inspection:
-  * `*-Review.json`
-  * `*-Review-Filtered.json`
+- Starts the review flow from [`index.ts`](./src/index.ts).
+- Connects to Gmail using the configured OAuth files.
+- Fetches emails from:
+  - `jobalerts-noreply@linkedin.com` (LinkedIn)
+  - `noreply@glassdoor.com` (Glassdoor)
+  - `jobalert@lensa.com` (Lensa)
+- Parses job entries from those emails.
+- Generates full + filtered HTML review files (per source), for example:
+  - `Results/Linked-In-Jobs-Review.html`
+  - `Results/Linked-In-Jobs-Review-Filtered.html`
+  - `Results/Glassdoor-Jobs-Review.html`
+  - `Results/Glassdoor-Jobs-Review-Filtered.html`
+  - `Results/Lensa-Jobs-Review.html`
+  - `Results/Lensa-Jobs-Review-Filtered.html`
+- In normal mode (`reviewJobs`), filtered review uses in-memory objects (no JSON read/write I/O in the pipeline).
+- In debug mode (`reviewJobs:debug`), JSON snapshots are also written for inspection:
+  - `*-Review.json`
+  - `*-Review-Filtered.json`
 
 Filtered review behavior:
 
-* Emails are sorted latest first.
-* Duplicate jobs are kept in the latest email only.
-* The same jobs are removed from older emails.
-* Any email with `0` jobs after filtering is omitted from the filtered output.
-* Source-level salary filtering is configured in [`src/config.ts`](/c:/dev/yhtang/node-js/gmail/src/config.ts) (currently applied for Glassdoor and Lensa).
+- Emails are sorted latest first.
+- Duplicate jobs are kept in the latest email only.
+- The same jobs are removed from older emails.
+- Any email with `0` jobs after filtering is omitted from the filtered output.
+- Source-level salary filtering is configured in [`src/config.ts`](./src/config.ts) (currently applied for Glassdoor and Lensa).
 
 ### Run with local sample emails
 
@@ -170,41 +170,41 @@ Run:
 npm run reviewSamples
 ```
 
-This parses explicit sample files under [`Sample`](/c:/dev/yhtang/node-js/gmail/Sample):
+This parses explicit sample files under [`Sample`](./Sample):
 
-* `Sample/LinkedIn.eml`
-* `Sample/Glassdoor.eml`
-* `Sample/Lensa.eml`
+- `Sample/LinkedIn.eml`
+- `Sample/Glassdoor.eml`
+- `Sample/Lensa.eml`
 
-And generates the same review + filtered outputs into [`Results`](/c:/dev/yhtang/node-js/gmail/Results).
+And generates the same review + filtered outputs into [`Results`](./Results).
 
-Open the generated files in [`Results`](/c:/dev/yhtang/node-js/gmail/Results) to review the outputs.
+Open the generated files in [`Results`](./Results) to review the outputs.
 
 ## 4. Architecture (Parser Tiers)
 
 The parser layer uses a tiered design to balance source-specific parsing and shared behavior:
 
-* [`BaseJobEmailParser`](/c:/dev/yhtang/node-js/gmail/src/parsers/BaseJobEmailParser.ts)
-  * Shared Gmail-fetch flow.
-  * Shared `JobRecord` model.
-  * Shared MIME-part extraction for Gmail/sample `.eml` processing.
-* [`HtmlJobEmailParser`](/c:/dev/yhtang/node-js/gmail/src/parsers/HtmlJobEmailParser.ts)
-  * Shared HTML-heavy parsing helpers (decode/normalize/html-text fallback).
-  * Base tier for HTML-style sources.
-* Source parsers:
-  * [`LinkedInParser`](/c:/dev/yhtang/node-js/gmail/src/parsers/LinkedInParser.ts) (plain-text flavor)
-  * [`GlassdoorParser`](/c:/dev/yhtang/node-js/gmail/src/parsers/GlassdoorParser.ts) (hairy HTML flavor)
-  * [`LensaParser`](/c:/dev/yhtang/node-js/gmail/src/parsers/LensaParser.ts) (hairy HTML flavor)
+- [`BaseJobEmailParser`](./src/parsers/BaseJobEmailParser.ts)
+  - Shared Gmail-fetch flow.
+  - Shared `JobRecord` model.
+  - Shared MIME-part extraction for Gmail/sample `.eml` processing.
+- [`HtmlJobEmailParser`](./src/parsers/HtmlJobEmailParser.ts)
+  - Shared HTML-heavy parsing helpers (decode/normalize/html-text fallback).
+  - Base tier for HTML-style sources.
+- Source parsers:
+  - [`LinkedInParser`](./src/parsers/LinkedInParser.ts) (plain-text flavor)
+  - [`GlassdoorParser`](./src/parsers/GlassdoorParser.ts) (hairy HTML flavor)
+  - [`LensaParser`](./src/parsers/LensaParser.ts) (hairy HTML flavor)
 
 Design intent:
 
-* Keep source flavor logic isolated in child classes.
-* Keep shared flow/utilities centralized in base tiers.
-* Keep field mapping explicit in parser code through `JobRecord` property setters.
+- Keep source flavor logic isolated in child classes.
+- Keep shared flow/utilities centralized in base tiers.
+- Keep field mapping explicit in parser code through `JobRecord` property setters.
 
 ### Cleanup scripts
 
-Useful scripts from [`package.json`](/c:/dev/yhtang/node-js/gmail/package.json):
+Useful scripts from [`package.json`](./package.json):
 
 ```bash
 npm run del:results
@@ -213,10 +213,10 @@ npm run del:packages
 
 They do the following:
 
-* `del:results`: removes the generated `Results` folder.
-* `del:packages`: removes `node_modules`.
+- `del:results`: removes the generated `Results` folder.
+- `del:packages`: removes `node_modules`.
 
 ## Notes
 
-* If Google returns a 403 during authorization, make sure your Gmail account was added as a test user.
-* `npm install` may still show `node-domexception@1.0.0` as deprecated. That warning currently comes from the upstream Google HTTP dependency chain and can be ignored for now.
+- If Google returns a 403 during authorization, make sure your Gmail account was added as a test user.
+- `npm install` may still show `node-domexception@1.0.0` as deprecated. That warning currently comes from the upstream Google HTTP dependency chain and can be ignored for now.
