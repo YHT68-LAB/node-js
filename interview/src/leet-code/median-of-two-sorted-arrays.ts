@@ -1,3 +1,4 @@
+// chatGpt's code -- Time O(log(min(m, n))) Space O(1)
 function findMedianSortedArrays(nums1: number[], nums2: number[]): number {
   /*
     🧠 Core Idea (Your Mental Model)
@@ -106,4 +107,28 @@ function findMedianSortedArrays(nums1: number[], nums2: number[]): number {
   }
 
   throw new Error("Input arrays must be sorted.");
+}
+
+// leet code -- Time O((m + n) log(m + n)) Space O(m + n)
+function findMedianSortedArrays2(nums1: number[], nums2: number[]): number {
+  const total: number[] = [...nums1, ...nums2].sort((a, b) => a - b);
+  let median = 0;
+  if (total.length % 2 == 1) {
+    median = total[(total.length) / 2 - 0.5];
+  } else {
+    median = (total[total.length / 2] + total[(total.length / 2) - 1]) / 2;
+  }
+
+  return median;
+};
+
+// my code -- Time O((m + n) log(m + n)) Space O(m + n)
+function findMedianSortedArrays3(nums1: number[], nums2: number[]): number {
+  if (nums1.length == 0 && nums2.length == 0) return 0;
+
+  const twoArrays = [...nums1, ...nums2].sort((a, b) => a - b);
+
+  return twoArrays.length % 2 == 1 ? // odd or even?
+    twoArrays[(twoArrays.length + 1) / 2 - 1] :    // 3 > 0 1 2 > 1 
+    (twoArrays[(twoArrays.length) / 2 - 1] + twoArrays[(twoArrays.length) / 2]) / 2 // 2 > 0 1 
 }
