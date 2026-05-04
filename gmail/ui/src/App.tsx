@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ExternalLink, MailOpen, RefreshCw, Save, SlidersHorizontal } from 'lucide-react';
+import { ChevronDown, MailOpen, RefreshCw, Save, SlidersHorizontal } from 'lucide-react';
 
 type SalaryRangeUsdYear = {
   text: string;
@@ -292,9 +292,12 @@ export function App() {
                 open={emailIndex === 0}
               >
                 <summary className="email-header">
-                  <div>
-                    <h2>{email.subject}</h2>
-                    <p>{email.datetime}</p>
+                  <div className="email-title-row">
+                    <span className="email-index">#{emailIndex + 1}</span>
+                    <div>
+                      <h2>{email.subject}</h2>
+                      <p>{email.datetime}</p>
+                    </div>
                   </div>
                   <div className="email-actions">
                     {email.gmailUrl && (
@@ -320,7 +323,11 @@ export function App() {
                       <article className="job-row" key={`${emailIndex}-${job.key}-${job.index}`}>
                         <div className="job-index">#{job.index}</div>
                         <div className="job-main">
-                          <h3>{job.title}</h3>
+                          <h3>
+                            <a className="job-title-link" href={job.link} target="_blank" rel="noreferrer">
+                              {job.title}
+                            </a>
+                          </h3>
                           <p>{[job.company, job.location, job.salary?.text, job.postedDate, job.rating].filter(Boolean).join(' | ')}</p>
                           {job.details.length > 0 && (
                             <ul>
@@ -330,9 +337,6 @@ export function App() {
                             </ul>
                           )}
                         </div>
-                        <a className="job-link" href={job.link} target="_blank" rel="noreferrer" title="Open job">
-                          <ExternalLink size={17} />
-                        </a>
                       </article>
                     ))}
                   </div>

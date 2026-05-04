@@ -65,8 +65,7 @@ h1 {
 }
 
 .icon-text-button,
-.email-actions a,
-.job-link {
+.email-actions a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -305,6 +304,27 @@ h1 {
   margin: 0;
 }
 
+.email-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.email-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  min-width: 38px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .email-header h2 {
   font-size: 1.03rem;
   line-height: 1.35;
@@ -378,6 +398,17 @@ h1 {
   font-size: 1rem;
 }
 
+.job-title-link {
+  color: var(--accent-strong);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.job-title-link:hover,
+.job-title-link:focus-visible {
+  text-decoration: underline;
+}
+
 .job-main ul {
   margin: 9px 0 0;
   padding-left: 18px;
@@ -385,12 +416,6 @@ h1 {
 
 .job-main li {
   margin-top: 4px;
-}
-
-.job-link {
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
 }
 
 .empty {
@@ -453,6 +478,6 @@ h1 {
 
   .job-row {
     display: grid;
-    grid-template-columns: 44px 1fr 36px;
+    grid-template-columns: 44px 1fr;
   }
 }
