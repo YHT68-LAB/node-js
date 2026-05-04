@@ -1,6 +1,24 @@
 # Job Review (LinkedIn + Glassdoor + Lensa)
 
-This project reads job alert emails from Gmail (LinkedIn + Glassdoor + Lensa) and generates review files in both HTML and JSON format, including a filtered version with duplicate jobs removed (and optional salary filtering by source).
+## Table of Contents
+
+- [Overview](#overview)
+- [1. Project Setup](#1-project-setup)
+- [2. Manage Token](#2-manage-token)
+- [3. Use the React Review UI](#3-use-the-react-review-ui)
+- [4. Create Static Review Files](#4-create-static-review-files)
+- [5. Architecture](#5-architecture)
+- [Notes](#notes)
+
+## Overview
+
+This project reads job alert emails from Gmail (LinkedIn + Glassdoor + Lensa), serves a React review UI, and can still generate review files in both HTML and JSON format.
+
+Project layout:
+
+- [`server/src`](./server/src): Node/Gmail/parser/API code.
+- [`ui/src`](./ui/src): React browser UI code.
+- `frontend-dist`: generated UI bundle created by `npm run ui:build` and ignored by git.
 
 ## 1. Project Setup
 
@@ -60,7 +78,7 @@ Fields:
 
 How it is used:
 
-- [`auth.ts`](./src/auth.ts) loads this file.
+- [`auth.ts`](./server/src/auth.ts) loads this file.
 - `paths.clientSecret` is used to create the Google OAuth client.
 - `paths.token` is used to load the saved Gmail token.
 - If the token file is missing, the app asks you to generate it first.
@@ -107,7 +125,36 @@ What happens next:
 
 You usually only need to do this again if the token expires, is revoked, or you switch accounts.
 
-## 3. Create Review
+## 3. Use the React Review UI
+
+Run:
+
+```bash
+npm run ui
+```
+
+Then open:
+
+```text
+http://localhost:5174
+```
+
+The page fetches fresh Gmail data when it loads. Use the **Refresh** button to fetch again without running `npm run reviewJobs`. Each email has an **Open email** link that opens the source message in Gmail, and each job keeps its **Open job** link.
+
+The UI shows the active filters for each source. You can edit the filter controls and use **Apply filters** to fetch a new filtered result. Use **Save defaults** to write those filter settings to `job-filters.local.json`; future UI refreshes use that local file first and fall back to [`server/src/config.ts`](./server/src/config.ts) when the file does not exist.
+
+### UI and API flow
+
+- `npm run ui` builds [`ui/src`](./ui/src) into `frontend-dist`, then starts [`server/src/server.ts`](./server/src/server.ts).
+- The server hosts the React app at `http://localhost:5174`.
+- `GET /api/reviews` fetches Gmail using the saved local filters.
+- `POST /api/reviews` fetches Gmail using filter values sent from the UI.
+- `GET /api/filters` reads the active local filter defaults.
+- `POST /api/filters` writes updated filter defaults to `job-filters.local.json`.
+
+The UI uses the same local Gmail token configured in [`gmail-api.config.json`](./gmail-api.config.json). If you already have a valid local token, no extra authorization step is needed.
+
+## 4. Create Static Review Files
 
 Run:
 
@@ -118,7 +165,7 @@ npm run reviewJobs
 This script runs:
 
 ```json
-"reviewJobs": "ts-node src/index.ts"
+"reviewJobs": "ts-node server/src/index.ts"
 ```
 
 For debug snapshots (JSON in/out on disk), run:
@@ -130,12 +177,12 @@ npm run reviewJobs:debug
 This script runs:
 
 ```json
-"reviewJobs:debug": "ts-node src/index.ts --debug"
+"reviewJobs:debug": "ts-node server/src/index.ts --debug"
 ```
 
 What it does:
 
-- Starts the review flow from [`index.ts`](./src/index.ts).
+- Starts the review flow from [`index.ts`](./server/src/index.ts).
 - Connects to Gmail using the configured OAuth files.
 - Fetches emails from:
   - `jobalerts-noreply@linkedin.com` (LinkedIn)
@@ -160,7 +207,7 @@ Filtered review behavior:
 - Duplicate jobs are kept in the latest email only.
 - The same jobs are removed from older emails.
 - Any email with `0` jobs after filtering is omitted from the filtered output.
-- Source-level salary filtering is configured in [`src/config.ts`](./src/config.ts) (currently applied for Glassdoor and Lensa).
+- Source-level fallback salary filtering is configured in [`server/src/config.ts`](./server/src/config.ts) (currently applied for Glassdoor and Lensa).
 
 ### Run with local sample emails
 
@@ -180,21 +227,21 @@ And generates the same review + filtered outputs into [`Results`](./Results).
 
 Open the generated files in [`Results`](./Results) to review the outputs.
 
-## 4. Architecture (Parser Tiers)
+## 5. Architecture
 
 The parser layer uses a tiered design to balance source-specific parsing and shared behavior:
 
-- [`BaseJobEmailParser`](./src/parsers/BaseJobEmailParser.ts)
+- [`BaseJobEmailParser`](./server/src/parsers/BaseJobEmailParser.ts)
   - Shared Gmail-fetch flow.
   - Shared `JobRecord` model.
   - Shared MIME-part extraction for Gmail/sample `.eml` processing.
-- [`HtmlJobEmailParser`](./src/parsers/HtmlJobEmailParser.ts)
+- [`HtmlJobEmailParser`](./server/src/parsers/HtmlJobEmailParser.ts)
   - Shared HTML-heavy parsing helpers (decode/normalize/html-text fallback).
   - Base tier for HTML-style sources.
 - Source parsers:
-  - [`LinkedInParser`](./src/parsers/LinkedInParser.ts) (plain-text flavor)
-  - [`GlassdoorParser`](./src/parsers/GlassdoorParser.ts) (hairy HTML flavor)
-  - [`LensaParser`](./src/parsers/LensaParser.ts) (hairy HTML flavor)
+  - [`LinkedInParser`](./server/src/parsers/LinkedInParser.ts) (plain-text flavor)
+  - [`GlassdoorParser`](./server/src/parsers/GlassdoorParser.ts) (hairy HTML flavor)
+  - [`LensaParser`](./server/src/parsers/LensaParser.ts) (hairy HTML flavor)
 
 Design intent:
 

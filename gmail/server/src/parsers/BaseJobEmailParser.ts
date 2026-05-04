@@ -134,6 +134,7 @@ export abstract class BaseJobEmailParser {
         format: 'full'
       });
 
+      const threadId = detail.data.threadId || message.threadId || messageId;
       const headers = detail.data.payload?.headers || [];
       const subject = this.getHeaderValue(headers, 'Subject');
       const date = this.getHeaderValue(headers, 'Date');
@@ -144,6 +145,9 @@ export abstract class BaseJobEmailParser {
       });
 
       emails.push({
+        messageId,
+        threadId,
+        gmailUrl: this.buildGmailThreadUrl(threadId),
         subject,
         date,
         jobs: this.toJobPostings(jobs)
@@ -206,6 +210,10 @@ export abstract class BaseJobEmailParser {
 
   private escapeRegexForMime(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  private buildGmailThreadUrl(threadId: string): string {
+    return `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(threadId)}`;
   }
 }
 

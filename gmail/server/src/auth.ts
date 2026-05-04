@@ -2,7 +2,7 @@ import fs from 'fs';
 import { google } from 'googleapis';
 import path from 'path';
 
-const CONFIG_PATH = path.join(__dirname, '../gmail-api.config.json');
+const CONFIG_PATH = path.join(__dirname, '../../gmail-api.config.json');
 const configJson = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
 const config = configJson.gmailApiConfig.paths;
 

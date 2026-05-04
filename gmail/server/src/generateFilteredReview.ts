@@ -19,6 +19,9 @@ interface ReviewJob {
 }
 
 interface ReviewEmail {
+  messageId?: string;
+  threadId?: string;
+  gmailUrl?: string;
   subject: string;
   datetime: string;
   jobs: ReviewJob[];
@@ -47,7 +50,7 @@ export function generateFilteredReview(
   options: GenerateFilteredReviewOptions = {}
 ): ReviewData {
   const { reviewData: inputReviewData, writeHtml = true, writeJson = true } = options;
-  const outputDir = path.join(__dirname, '../Results');
+  const outputDir = path.join(__dirname, '../../Results');
   const inputPath = path.join(outputDir, `${source.outputBaseName}-Review.json`);
   const htmlOutputPath = path.join(outputDir, `${source.outputBaseName}-Review-Filtered.html`);
   const jsonOutputPath = path.join(outputDir, `${source.outputBaseName}-Review-Filtered.json`);
@@ -307,6 +310,7 @@ function buildFilteredHtml(reviewData: ReviewData, source: JobSourceConfig): str
               <div>
                 <div class="email-subject">${escapeHtml(email.subject)}</div>
                 <div class="email-date">${escapeHtml(email.datetime)}</div>
+                ${email.gmailUrl ? `<a class="job-link" href="${escapeAttribute(email.gmailUrl)}" target="_blank" rel="noreferrer">Open email in Gmail</a>` : ''}
               </div>
               <div class="email-count">${email.jobs.length} jobs</div>
             </div>

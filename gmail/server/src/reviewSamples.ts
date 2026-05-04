@@ -10,9 +10,9 @@ import { GlassdoorEmailParser } from './parsers/GlassdoorParser';
 import { LensaEmailParser } from './parsers/LensaParser';
 
 const SAMPLE_FILES: Record<JobSourceId, string> = {
-  LinkedIn: path.join(__dirname, '../Sample/LinkedIn.eml'),
-  Glassdoor: path.join(__dirname, '../Sample/Glassdoor.eml'),
-  Lensa: path.join(__dirname, '../Sample/Lensa.eml')
+  LinkedIn: path.join(__dirname, '../../Sample/LinkedIn.eml'),
+  Glassdoor: path.join(__dirname, '../../Sample/Glassdoor.eml'),
+  Lensa: path.join(__dirname, '../../Sample/Lensa.eml')
 };
 
 type ParserWithRawEml = BaseJobEmailParser & {

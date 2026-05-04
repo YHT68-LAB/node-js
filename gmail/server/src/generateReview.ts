@@ -16,6 +16,9 @@ export interface ReviewJob {
 }
 
 export interface ReviewEmail {
+  messageId?: string;
+  threadId?: string;
+  gmailUrl?: string;
   subject: string;
   datetime: string;
   jobs: ReviewJob[];
@@ -50,7 +53,7 @@ export function generateReview(source: JobSourceConfig, jobs: JobEmail[], option
     dateStyle: 'medium',
     timeStyle: 'medium'
   });
-  const outputDir = path.join(__dirname, '../Results');
+  const outputDir = path.join(__dirname, '../../Results');
   const htmlOutputPath = path.join(outputDir, `${source.outputBaseName}-Review.html`);
   const jsonOutputPath = path.join(outputDir, `${source.outputBaseName}-Review.json`);
   const jsonPayload: ReviewData = {
@@ -64,6 +67,9 @@ export function generateReview(source: JobSourceConfig, jobs: JobEmail[], option
       createdAtIso: createdAtDate.toISOString()
     },
     emails: jobs.map(email => ({
+      messageId: email.messageId,
+      threadId: email.threadId,
+      gmailUrl: email.gmailUrl,
       subject: email.subject,
       datetime: email.date,
       jobs: email.jobs.map((job, index) => ({
@@ -255,6 +261,7 @@ export function generateReview(source: JobSourceConfig, jobs: JobEmail[], option
               <div>
                 <div class="email-subject">${escapeHtml(email.subject)}</div>
                 <div class="email-date">${escapeHtml(email.date)}</div>
+                ${email.gmailUrl ? `<a class="job-link" href="${escapeAttribute(email.gmailUrl)}" target="_blank" rel="noreferrer">Open email in Gmail</a>` : ''}
               </div>
               <div class="email-count">${email.jobs.length} jobs</div>
             </div>

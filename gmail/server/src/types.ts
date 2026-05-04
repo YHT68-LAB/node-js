@@ -21,6 +21,9 @@ export interface JobPosting {
 export type RawJobPosting = Omit<JobPosting, 'key'>;
 
 export interface JobEmail {
+  messageId?: string;
+  threadId?: string;
+  gmailUrl?: string;
   subject: string;
   date: string;
   jobs: JobPosting[];
