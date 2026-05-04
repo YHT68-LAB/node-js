@@ -16,27 +16,38 @@
   "license": "MIT",
   
   "dependencies": {
-    "googleapis": "^171.4.0"
+    "googleapis": "^171.4.0",
+    "lucide-react": "^0.468.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
 
   "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
     "nodemon": "^3.0.1",
     "rimraf": "^6.1.3",
     "ts-node": "^10.9.1",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "vite": "^5.0.10"
   },
 
   "scripts": {
-    "start": "ts-node src/index.ts",
+    "start": "ts-node server/src/index.ts",
     "build": "tsc",
-    "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/index.ts",
+    "dev": "nodemon --watch 'server/src/**/*.ts' --exec 'ts-node' server/src/index.ts",
     "del:results": "rimraf Results",
     "del:packages": "rimraf node_modules",
-    "manageToken": "ts-node src/manageToken.ts",
-    "generateReview": "ts-node src/generateReview.ts",
-    "generateFilteredReview": "ts-node src/generateFilteredReview.ts",
-    "reviewSamples": "ts-node src/reviewSamples.ts",
-    "reviewJobs": "ts-node src/index.ts",
-    "reviewJobs:debug": "ts-node src/index.ts --debug"
+    "manageToken": "ts-node server/src/manageToken.ts",
+    "generateReview": "ts-node server/src/generateReview.ts",
+    "generateFilteredReview": "ts-node server/src/generateFilteredReview.ts",
+    "reviewSamples": "ts-node server/src/reviewSamples.ts",
+    "reviewJobs": "ts-node server/src/index.ts",
+    "reviewJobs:debug": "ts-node server/src/index.ts --debug",
+    "ui:build": "vite build --config vite.config.ts",
+    "ui:server": "ts-node server/src/server.ts",
+    "ui": "npm run ui:build && npm run ui:server"
   }
 }

@@ -6,7 +6,7 @@ import readline from 'readline';
 import { exec } from 'child_process';
 import { google } from 'googleapis';
 
-const CONFIG_PATH = path.join(__dirname, '../gmail-api.config.json');
+const CONFIG_PATH = path.join(__dirname, '../../gmail-api.config.json');
 const configJson = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
 const config = configJson.gmailApiConfig.paths;
 const CONFIG_DIR = path.dirname(CONFIG_PATH);

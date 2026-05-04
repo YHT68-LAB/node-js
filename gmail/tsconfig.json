@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "baseUrl": "./src",
+    "baseUrl": "./server/src",
     "target": "ES2020",                     // Modern JS features
     "module": "CommonJS",                   // Node.js module system
     "moduleResolution": "node",             // Resolve node_modules
@@ -9,10 +9,10 @@
     "strict": true,                         // Enable all strict type checks
     "skipLibCheck": true,                   // Skip type checking for node_modules
     "outDir": "dist",                       // Compiled JS output
-    "rootDir": "src",                       // Source TS files
+    "rootDir": "server/src",                // Server TS files
     "resolveJsonModule": true,              // Allow importing JSON (credentials.json)
     "noImplicitAny": false                   // Optional: allow implicit any
   },
-  "include": ["src/**/*"],
+  "include": ["server/src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
