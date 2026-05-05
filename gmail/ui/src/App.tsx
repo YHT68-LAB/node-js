@@ -50,6 +50,15 @@ type SourceReview = {
   };
   review: ReviewData;
   filteredReview: ReviewData;
+  timing: {
+    fetchEmailsMs: number;
+    generateReviewMs: number;
+    filterReviewMs: number;
+    totalMs: number;
+    emailCount: number;
+    rawJobCount: number;
+    filteredJobCount: number;
+  };
 };
 
 type JobFilterConfig = {
@@ -76,9 +85,12 @@ export function App() {
   const [error, setError] = useState<string>('');
   const [notice, setNotice] = useState<string>('');
   const [filters, setFilters] = useState<JobFiltersBySource | null>(null);
+  const [loadingElapsedMs, setLoadingElapsedMs] = useState(0);
 
   async function refreshReviews(filtersToApply: JobFiltersBySource | null = filters) {
+    const requestStartedAt = Date.now();
     setIsLoading(true);
+    setLoadingElapsedMs(0);
     setError('');
     setNotice('');
 
@@ -103,6 +115,7 @@ export function App() {
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : 'Could not refresh job emails.');
     } finally {
+      setLoadingElapsedMs(Date.now() - requestStartedAt);
       setIsLoading(false);
     }
   }
@@ -110,6 +123,17 @@ export function App() {
   useEffect(() => {
     refreshReviews();
   }, []);
+
+  useEffect(() => {
+    if (!isLoading) return;
+
+    const startedAt = Date.now();
+    const intervalId = window.setInterval(() => {
+      setLoadingElapsedMs(Date.now() - startedAt);
+    }, 250);
+
+    return () => window.clearInterval(intervalId);
+  }, [isLoading]);
 
   const activeSource = useMemo(() => {
     return data?.sources.find(source => source.source.id === activeSourceId) || data?.sources[0];
@@ -167,7 +191,9 @@ export function App() {
           <p className="eyebrow">Gmail job alerts</p>
           <h1>Job Email Review</h1>
           <p className="subtitle">
-            {data
+            {isLoading
+              ? `Loading Gmail results... ${formatDuration(loadingElapsedMs)} elapsed`
+              : data
               ? `Refreshed ${formatDateTime(data.refreshedAt)} in ${Math.round(data.elapsedMs / 1000)}s`
               : 'Fetching the latest messages from Gmail...'}
           </p>
@@ -282,6 +308,18 @@ export function App() {
               <span>Created</span>
               <strong>{formatDateTime(activeReview.summary.createdAtIso)}</strong>
             </div>
+            <div>
+              <span>API time</span>
+              <strong>{formatDuration(data.elapsedMs)}</strong>
+            </div>
+            <div>
+              <span>{activeSource?.source.id} fetch</span>
+              <strong>{activeSource ? formatDuration(activeSource.timing.fetchEmailsMs) : '-'}</strong>
+            </div>
+            <div>
+              <span>{activeSource?.source.id} total</span>
+              <strong>{activeSource ? formatDuration(activeSource.timing.totalMs) : '-'}</strong>
+            </div>
           </section>
 
           <section className="email-list" aria-label={`${activeReview.summary.displayName} emails`}>
@@ -352,6 +390,11 @@ export function App() {
       )}
     </main>
   );
+}
+
+function formatDuration(valueMs: number): string {
+  if (!Number.isFinite(valueMs)) return '-';
+  return `${(valueMs / 1000).toFixed(1)}s`;
 }
 
 function formatDateTime(value: string): string {

@@ -1,4 +1,4 @@
-import { getGmailClient } from '../auth';
+import { getGmailClient, getGmailQueryConfig } from '../auth';
 import { decodeQuotedPrintable } from '../utils/quotedPrintable';
 import { JobEmail, JobPosting, RawJobPosting, SalaryRangeUsdYear } from '../types';
 
@@ -117,16 +117,16 @@ export abstract class BaseJobEmailParser {
 
   public async fetchJobEmails(): Promise<JobEmail[]> {
     const gmail = await getGmailClient();
+    const queryConfig = getGmailQueryConfig();
     const listResponse = await gmail.users.messages.list({
       userId: 'me',
-      q: this.searchQuery,
-      maxResults: 100
+      q: this.buildSearchQuery(queryConfig.newerThan),
+      maxResults: queryConfig.maxResultsPerSource
     });
 
     if (!listResponse.data.messages) return [];
 
-    const emails: JobEmail[] = [];
-    for (const message of listResponse.data.messages) {
+    return mapWithConcurrency(listResponse.data.messages, queryConfig.messageDetailConcurrency, async message => {
       const messageId = message.id!;
       const detail = await gmail.users.messages.get({
         userId: 'me',
@@ -144,17 +144,15 @@ export abstract class BaseJobEmailParser {
         payload: detail.data.payload
       });
 
-      emails.push({
+      return {
         messageId,
         threadId,
         gmailUrl: this.buildGmailThreadUrl(threadId),
         subject,
         date,
         jobs: this.toJobPostings(jobs)
-      });
-    }
-
-    return emails;
+      };
+    });
   }
 
   protected getHeaderValue(
@@ -215,8 +213,35 @@ export abstract class BaseJobEmailParser {
   private buildGmailThreadUrl(threadId: string): string {
     return `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(threadId)}`;
   }
+
+  private buildSearchQuery(newerThan: string): string {
+    const trimmedWindow = newerThan.trim();
+    if (!trimmedWindow) return this.searchQuery;
+    return `${this.searchQuery} newer_than:${trimmedWindow}`;
+  }
 }
 
 function normalizeText(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
+}
+
+async function mapWithConcurrency<TInput, TOutput>(
+  items: TInput[],
+  concurrency: number,
+  worker: (item: TInput, index: number) => Promise<TOutput>
+): Promise<TOutput[]> {
+  const results = new Array<TOutput>(items.length);
+  let nextIndex = 0;
+
+  async function runWorker(): Promise<void> {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await worker(items[currentIndex], currentIndex);
+    }
+  }
+
+  const workerCount = Math.min(concurrency, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
+  return results;
 }

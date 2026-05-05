@@ -9,6 +9,9 @@
 - Kept the fold/expand email view, with the first email expanded by default.
 - Added editable source filters in the UI, with apply-on-refresh behavior and optional local default persistence.
 - Added `/api/filters` for reading and writing local filter defaults.
+- Added lightweight load timing in the UI and per-source timing in review API responses.
+- Added Gmail query settings in `gmail-api.config.json` for search window, per-source result limit, source concurrency, and detail fetch concurrency.
+- Tuned the benchmark Gmail fetch config to 14 days, 50 messages per source, `sourceConcurrency: 3`, and `messageDetailConcurrency: 5`.
 - Split source layout into `server/src` for Node/Gmail/API code and `ui/src` for React code.
 - Updated README with the new UI workflow.
 
