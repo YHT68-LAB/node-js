@@ -65,6 +65,12 @@ Example:
       "clientSecret": "C:\\Users\\ANDY TANG\\OneDrive\\Documents\\ANDY\\GMAIL\\madeinuk14_gmail_client_secret_cred.json",
       "token": "C:\\Users\\ANDY TANG\\OneDrive\\Documents\\ANDY\\GMAIL\\gmail_token.json",
       "tokenCopy": "./gmail-token.copy.json"
+    },
+    "query": {
+      "newerThan": "14d",
+      "maxResultsPerSource": 50,
+      "sourceConcurrency": 3,
+      "messageDetailConcurrency": 5
     }
   }
 }
@@ -75,6 +81,12 @@ Fields:
 - `clientSecret`: Absolute path to the Google OAuth client credentials JSON.
 - `token`: Absolute path to the Gmail OAuth token file created later by `npm run manageToken`.
 - `tokenCopy`: Local project-side copied token file.
+- `query.newerThan`: Gmail search window added as `newer_than:<value>`.
+- `query.maxResultsPerSource`: Maximum Gmail messages fetched per source.
+- `query.sourceConcurrency`: Number of job sources fetched at the same time.
+- `query.messageDetailConcurrency`: Number of full Gmail messages fetched at the same time within each source.
+
+The current benchmark setting uses `sourceConcurrency: 3` and `messageDetailConcurrency: 5`, which can run the three configured job sources at the same time and fetch up to 15 Gmail message details concurrently across those sources.
 
 How it is used:
 
@@ -151,6 +163,9 @@ The UI shows the active filters for each source. You can edit the filter control
 - `POST /api/reviews` fetches Gmail using filter values sent from the UI.
 - `GET /api/filters` reads the active local filter defaults.
 - `POST /api/filters` writes updated filter defaults to `job-filters.local.json`.
+- Review responses include total API timing and per-source timing for Gmail fetch, review generation, and filtering.
+- Gmail search limits come from `gmail-api.config.json` under `gmailApiConfig.query`.
+- Current benchmark query settings are 14 days, 50 messages per source, 3 source workers, and 5 message-detail workers per source.
 
 The UI uses the same local Gmail token configured in [`gmail-api.config.json`](./gmail-api.config.json). If you already have a valid local token, no extra authorization step is needed.
 
@@ -188,6 +203,7 @@ What it does:
   - `jobalerts-noreply@linkedin.com` (LinkedIn)
   - `noreply@glassdoor.com` (Glassdoor)
   - `jobalert@lensa.com` (Lensa)
+- Limits each Gmail source search using `gmailApiConfig.query` in `gmail-api.config.json`.
 - Parses job entries from those emails.
 - Generates full + filtered HTML review files (per source), for example:
   - `Results/Linked-In-Jobs-Review.html`

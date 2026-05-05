@@ -18,6 +18,14 @@ const mimeTypes: Record<string, string> = {
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
 
+  if (url.pathname === '/favicon.ico' || url.pathname === '/favicon.svg') {
+    response.writeHead(404, {
+      'cache-control': 'no-store'
+    });
+    response.end();
+    return;
+  }
+
   if (url.pathname === '/api/reviews') {
     if (request.method !== 'GET' && request.method !== 'POST') {
       sendJson(response, 405, { error: 'Method not allowed' });
