@@ -194,7 +194,7 @@ export function App() {
             {isLoading
               ? `Loading Gmail results... ${formatDuration(loadingElapsedMs)} elapsed`
               : data
-              ? `Refreshed ${formatDateTime(data.refreshedAt)} in ${Math.round(data.elapsedMs / 1000)}s`
+              ? `Refreshed ${formatDateTime(data.refreshedAt)} in ${formatDuration(data.elapsedMs, 2)}`
               : 'Fetching the latest messages from Gmail...'}
           </p>
         </div>
@@ -392,9 +392,9 @@ export function App() {
   );
 }
 
-function formatDuration(valueMs: number): string {
+function formatDuration(valueMs: number, fractionDigits = 1): string {
   if (!Number.isFinite(valueMs)) return '-';
-  return `${(valueMs / 1000).toFixed(1)}s`;
+  return `${(valueMs / 1000).toFixed(fractionDigits)}s`;
 }
 
 function formatDateTime(value: string): string {
