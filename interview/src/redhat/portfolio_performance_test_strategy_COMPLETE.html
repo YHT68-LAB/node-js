@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portfolio Performance Test Strategy</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.5.1/github-markdown-light.min.css">
+  <style>
+    body { margin: 0; background: #f6f8fa; color: #24292f; }
+    .toolbar { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 16px; background: #ffffff; border-bottom: 1px solid #d0d7de; }
+    button, label.file-button { border: 1px solid #d0d7de; border-radius: 6px; background: #f6f8fa; padding: 6px 10px; font: 14px system-ui, sans-serif; cursor: pointer; }
+    button:hover, label.file-button:hover { background: #eef2f6; }
+    input[type="file"] { display: none; }
+    .status { margin-left: auto; color: #57606a; font: 13px system-ui, sans-serif; }
+    .markdown-body { box-sizing: border-box; max-width: 1120px; margin: 0 auto; padding: 32px; background: #ffffff; }
+    details { margin: 12px 0; border: 1px solid #d0d7de; border-radius: 6px; padding: 8px 12px; }
+    summary { cursor: pointer; font-size: 16px; }
+    h1, h2, h3, h4, h5, h6 { scroll-margin-top: 64px; }
+    .error { border: 1px solid #d0d7de; border-radius: 6px; padding: 16px; background: #fff8c5; }
+    @media (max-width: 700px) { .markdown-body { padding: 18px; } .status { width: 100%; margin-left: 0; } }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button type="button" onclick="setAllDetails(true)">Expand all</button>
+    <button type="button" onclick="setAllDetails(false)">Fold all</button>
+    <span id="status" class="status">Loading Markdown...</span>
+  </div>
+
+  <main id="content" class="markdown-body">Loading Markdown...</main>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <script>
+    var markdownSource = location.pathname.split('/').pop().replace(/\.html?$/i, '.md');
+    var content = document.getElementById('content');
+    var statusText = document.getElementById('status');
+
+    function setAllDetails(open) {
+      document.querySelectorAll('details').forEach(function(section) {
+        section.open = open;
+      });
+    }
+
+    function slugify(text) {
+      return text
+        .toLowerCase()
+        .trim()
+        .replace(/<[^>]*>/g, '')
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+    }
+
+    function addHeadingIds(root) {
+      var seen = {};
+      root.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(function(heading) {
+        var base = slugify(heading.textContent);
+        var id = base;
+        var index = 1;
+
+        while (seen[id]) {
+          id = base + '-' + index;
+          index += 1;
+        }
+
+        seen[id] = true;
+        heading.id = id;
+      });
+    }
+
+    function renderMarkdown(markdown, sourceLabel) {
+      var html = marked.parse(markdown);
+      content.innerHTML = DOMPurify.sanitize(html, { ADD_TAGS: ['details', 'summary'], ADD_ATTR: ['open'] });
+      addHeadingIds(content);
+      statusText.textContent = 'Loaded: ' + sourceLabel;
+    }
+
+    function showLoadError(error) {
+      var message = error && error.message ? error.message : String(error);
+      var isMissing = message.indexOf('HTTP 404') !== -1;
+      var title = isMissing ? 'Markdown file was not found.' : 'Could not auto-load the Markdown file.';
+      var status = isMissing ? 'Markdown source missing' : 'Auto-load blocked';
+
+      content.innerHTML =
+        '<div class="error">' +
+        '<strong>' + title + '</strong>' +
+        '<p>Expected source file: <code>' + markdownSource + '</code></p>' +
+        '<p>This static reader expects the Markdown file to be served from the same folder as the HTML file. Direct <code>file://</code> opening and some VS Code previews block loading local Markdown files.</p>' +
+        '<p>This same approach works on GitHub Pages when both files are published together in the same directory.</p>' +
+        '<p>Local example: <code>http://127.0.0.1:8000/portfolio_performance_test_strategy_COMPLETE.html</code></p>' +
+        '<p>Error detail: <code>' + message + '</code></p>' +
+        '</div>';
+      statusText.textContent = status;
+      console.warn(error);
+    }
+
+    fetch(markdownSource, { cache: 'no-store' })
+      .then(function(response) {
+        if (!response.ok) throw new Error('HTTP ' + response.status + ' while loading ' + markdownSource);
+        return response.text();
+      })
+      .then(function(markdown) {
+        renderMarkdown(markdown, markdownSource);
+      })
+      .catch(showLoadError);
+  </script>
+</body>
+</html>
