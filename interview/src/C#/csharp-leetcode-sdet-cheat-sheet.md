@@ -153,6 +153,8 @@ set.Remove(1);
 
 # 5. Queue<T>
 
+FIFO
+
 ```csharp
 Queue<int> q = new Queue<int>();
 
@@ -166,6 +168,8 @@ int front = q.Peek();
 ---
 
 # 6. Stack<T>
+
+LIFO
 
 ```csharp
 Stack<int> stack = new Stack<int>();
