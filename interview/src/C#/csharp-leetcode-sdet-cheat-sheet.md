@@ -1,11 +1,11 @@
 # C# LeetCode / SDET Cheat Sheet
 
 - [1. Arrays](#1-arrays)
-- [2. List<T>](#2-listt)
-- [3. Dictionary<TKey, TValue>](#3-dictionarytkey-tvalue)
-- [4. HashSet<T>](#4-hashsett)
-- [5. Queue<T>](#5-queuet)
-- [6. Stack<T>](#6-stackt)
+- [2. List&lt;T&gt;](#2-listt)
+- [3. Dictionary&lt;TKey, TValue&gt;](#3-dictionarytkey-tvalue)
+- [4. HashSet&lt;T&gt;](#4-hashsett)
+- [5. Queue&lt;T&gt;](#5-queuet)
+- [6. Stack&lt;T&gt;](#6-stackt)
 - [7. String](#7-string)
 - [8. LINQ](#8-linq)
 - [9. Sorting](#9-sorting)
@@ -62,7 +62,7 @@ graph[0] = new int[] {1,2};
 
 ---
 
-# 2. List<T>
+# 2. List&lt;T&gt;
 
 ```csharp
 List<int> list = new List<int>();
@@ -97,7 +97,7 @@ List<int> list2 = nums.ToList();
 
 ---
 
-# 3. Dictionary<TKey, TValue>
+# 3. Dictionary&lt;TKey, TValue&gt;
 
 ```csharp
 Dictionary<string, int> map =
@@ -137,7 +137,7 @@ foreach (char c in s)
 
 ---
 
-# 4. HashSet<T>
+# 4. HashSet&lt;T&gt;
 
 ```csharp
 HashSet<int> set = new HashSet<int>();
@@ -151,7 +151,7 @@ set.Remove(1);
 
 ---
 
-# 5. Queue<T>
+# 5. Queue&lt;T&gt;
 
 FIFO
 
@@ -167,7 +167,7 @@ int front = q.Peek();
 
 ---
 
-# 6. Stack<T>
+# 6. Stack&lt;T&gt;
 
 LIFO
 
