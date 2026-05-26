@@ -79,7 +79,10 @@ export abstract class HtmlJobEmailParser extends BaseJobEmailParser {
 
   public parseJobsFromRawEml(rawEml: string): RawJobPosting[] {
     const htmlBody = this.extractPartBodyFromRawEml(rawEml, 'text/html');
-    if (htmlBody) return this.parseJobsFromBody(this.decodeMaybeQuotedPrintable(htmlBody));
+    if (htmlBody) {
+      const htmlJobs = this.parseJobsFromBody(this.decodeMaybeQuotedPrintable(htmlBody));
+      if (htmlJobs.length > 0) return htmlJobs;
+    }
 
     const textBody = this.extractPartBodyFromRawEml(rawEml, 'text/plain');
     return this.parseJobsFromBody(this.decodeMaybeQuotedPrintable(textBody));

@@ -21,8 +21,15 @@ const LENSA = {
     NUMERIC_ONLY: /^\d+(\.\d+)?$/,
     STARS_ONLY: /^[★\s]+$/,
     YOUR_JOB_ALERTS: /^your job alerts/i,
+    MORE_JOBS_BOUNDARY: /(?:\[\s*)?more jobs\s*(?:➞|»)?/i,
     TITLE_LINK_LINE: /^\[.+\]\(https?:\/\/sg3email\.lensa\.com\/ls\/click\?/i,
-    DETAILS_TAG_TRIGGER: /\bfull-time\b|\bpart-time\b|\bcontract\b/i
+    DETAILS_TAG_TRIGGER: /\bfull-time\b|\bpart-time\b|\bcontract\b/i,
+    MARKDOWN_SALARY_LINE: /^(?:about\s+)?\$\s*\d[\d,.]*\s*K?(?:\s*-\s*\$\s*\d[\d,.]*\s*K?)?\s*\/\s*yr\.?/i,
+    MARKDOWN_CARD_START: /^\[\s*\|/i,
+    MARKDOWN_CARD_CLOSE: /^\]\((https?:\/\/sg3email\.lensa\.com\/ls\/click\?[^)\s]+)/i,
+    MARKDOWN_CARD_SEPARATOR: /^---\|---$/,
+    MARKDOWN_LOCATION_LINE: /^\|\s*(.+)$/,
+    MARKDOWN_IMAGE: /!\[[^\]]*\]\([^)]+\)/g
   },
   WINDOW: {
     COMPANY_LOOK_BACK: 12,
@@ -47,17 +54,29 @@ export class LensaEmailParser extends HtmlJobEmailParser {
   protected readonly searchQuery = 'from:jobalert@lensa.com';
 
   protected async parseJobsFromMessage(input: ParseJobsFromMessageInput): Promise<RawJobPosting[]> {
-    const body = await this.extractPreferredBody({
+    const baseInput = {
       payload: input.payload,
       gmail: input.gmail,
       messageId: input.messageId,
       allowAttachment: true
+    };
+
+    const htmlBody = await this.extractBodyByMime({
+      ...baseInput,
+      wantedMimeType: 'text/html'
     });
-    return this.parseJobsFromBody(body);
+    const jobsFromHtml = this.parseJobsFromBody(htmlBody);
+    if (jobsFromHtml.length > 0) return jobsFromHtml;
+
+    const textBody = await this.extractBodyByMime({
+      ...baseInput,
+      wantedMimeType: 'text/plain'
+    });
+    return this.parseJobsFromBody(textBody);
   }
 
   protected parseJobsFromHtml(html: string): RawJobPosting[] {
-    const normalized = this.decodeHtmlText(html).replace(/\r\n/g, '\n');
+    const normalized = this.truncateAtMoreJobs(this.decodeHtmlText(html)).replace(/\r\n/g, '\n');
     const cardSections = normalized.split(LENSA.HTML.CARD_START).slice(1);
     this.resetJobRecords();
     const seenKeys = new Set<string>();
@@ -89,10 +108,14 @@ export class LensaEmailParser extends HtmlJobEmailParser {
   }
 
   protected parseJobsFromText(text: string): RawJobPosting[] {
-    const lines = text
+    const lines = this.truncateAtMoreJobs(text)
       .split('\n')
       .map(line => this.decodeHtmlText(line).replace(/\s+/g, ' ').trim())
       .filter(Boolean);
+
+    const jobsFromMarkdownCards = this.parseJobsFromMarkdownCards(lines);
+    if (jobsFromMarkdownCards.length > 0) return jobsFromMarkdownCards;
+
     this.resetJobRecords();
 
     for (let index = 0; index < lines.length; index += 1) {
@@ -191,6 +214,98 @@ export class LensaEmailParser extends HtmlJobEmailParser {
     }
 
     return Array.from(new Set(details)).slice(0, LENSA.LIMIT.MAX_DETAILS_COUNT);
+  }
+
+  private parseJobsFromMarkdownCards(lines: string[]): RawJobPosting[] {
+    this.resetJobRecords();
+    const seenKeys = new Set<string>();
+
+    for (let index = 0; index < lines.length; index += 1) {
+      if (!LENSA.REGEX.MARKDOWN_CARD_START.test(lines[index])) continue;
+
+      const block: string[] = [];
+      let closeMatch: RegExpMatchArray | null = null;
+      for (let cursor = index; cursor < lines.length; cursor += 1) {
+        const line = lines[cursor];
+        block.push(line);
+
+        closeMatch = line.match(LENSA.REGEX.MARKDOWN_CARD_CLOSE);
+        if (closeMatch) {
+          index = cursor;
+          break;
+        }
+      }
+
+      const link = closeMatch?.[1]?.trim() ?? '';
+      if (!link) continue;
+
+      const separatorIndex = block.findIndex(line => LENSA.REGEX.MARKDOWN_CARD_SEPARATOR.test(line));
+      if (separatorIndex <= 0 || separatorIndex + 1 >= block.length) continue;
+
+      const company = this.normalizeMarkdownCardCompany(block[separatorIndex - 1]);
+      const title = block[separatorIndex + 1]?.trim() ?? '';
+      const salaryText = block.find(line => LENSA.REGEX.MARKDOWN_SALARY_LINE.test(line)) ?? '';
+      const details = this.extractMarkdownCardDetails(block.slice(separatorIndex + 2, -1));
+      const location = this.extractMarkdownCardLocation(block, details);
+
+      if (!company || !title || !location) continue;
+      if (LENSA.REGEX.BLOCKED_TITLE.test(title)) continue;
+
+      const salary = salaryText ? parseSalaryUsdYear(salaryText) : undefined;
+      const dedupeKey = `${title}|${company}|${location}|${link}`;
+      if (seenKeys.has(dedupeKey)) continue;
+      seenKeys.add(dedupeKey);
+
+      const jobRecord = new JobRecord();
+      jobRecord.title = title;
+      jobRecord.company = company;
+      jobRecord.location = location;
+      jobRecord.link = link;
+      jobRecord.salary = salary;
+      jobRecord.addDetails(details);
+      this.addJobRecord(jobRecord);
+    }
+
+    return this.toRawJobPostingsFromJobRecords();
+  }
+
+  private normalizeMarkdownCardCompany(value: string): string {
+    const withoutImages = value.replace(LENSA.REGEX.MARKDOWN_IMAGE, '');
+    const text = withoutImages.includes('|') ? withoutImages.split('|').pop() ?? '' : withoutImages;
+    return this.normalizeCompany(text);
+  }
+
+  private extractMarkdownCardDetails(lines: string[]): string[] {
+    const detailLineStart = lines.findIndex(line => LENSA.REGEX.DETAILS_TAG_TRIGGER.test(line));
+    if (detailLineStart === -1) return [];
+
+    const detailText = lines
+      .slice(detailLineStart)
+      .filter(line => !this.looksLikeSalary(line))
+      .join(' ')
+      .replace(/\s*•\s*/g, '•');
+
+    return detailText
+      .split('•')
+      .map(part => part.trim())
+      .filter(part => part && part.toLowerCase() !== 'new')
+      .slice(0, LENSA.LIMIT.MAX_DETAILS_COUNT);
+  }
+
+  private truncateAtMoreJobs(value: string): string {
+    const match = value.match(LENSA.REGEX.MORE_JOBS_BOUNDARY);
+    if (match?.index === undefined) return value;
+    return value.slice(0, match.index);
+  }
+
+  private extractMarkdownCardLocation(block: string[], details: string[]): string {
+    for (const line of block) {
+      const locationMatch = line.match(LENSA.REGEX.MARKDOWN_LOCATION_LINE);
+      const location = locationMatch?.[1]?.trim() ?? '';
+      if (this.looksLikeLocation(location)) return location;
+    }
+
+    return details.find(detail => this.looksLikeLocation(detail)) ?? '';
   }
 
   private findCompanyNear(lines: string[], anchorIndex: number): string {

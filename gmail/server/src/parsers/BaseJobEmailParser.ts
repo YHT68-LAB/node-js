@@ -166,8 +166,12 @@ export abstract class BaseJobEmailParser {
     if (!rawEml) return '';
 
     const mime = this.escapeRegexForMime(wantedMimeType);
+    const boundary = this.extractMimeBoundary(rawEml);
+    const partEndPattern = boundary
+      ? `\\r?\\n--${this.escapeRegexForMime(boundary)}(?:--)?`
+      : '\\r?\\n--[^\\r\\n]{8,}';
     const partRegex = new RegExp(
-      `Content-Type:\\s*${mime}[^\\r\\n]*\\r?\\n([\\s\\S]*?)\\r?\\n\\r?\\n([\\s\\S]*?)(?=\\r?\\n--[^\\r\\n]+|$)`,
+      `Content-Type:\\s*${mime}[^\\r\\n]*\\r?\\n([\\s\\S]*?)\\r?\\n\\r?\\n([\\s\\S]*?)(?=${partEndPattern}|$)`,
       'gi'
     );
 
@@ -208,6 +212,16 @@ export abstract class BaseJobEmailParser {
 
   private escapeRegexForMime(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  private extractMimeBoundary(rawEml: string): string {
+    const headerEnd = rawEml.search(/\r?\n\r?\n/);
+    const headers = headerEnd >= 0 ? rawEml.slice(0, headerEnd) : rawEml;
+    const contentType = headers.match(/^Content-Type:\s*([^\r\n]*(?:\r?\n[ \t][^\r\n]*)*)/im)?.[1] ?? '';
+    const unfolded = contentType.replace(/\r?\n[ \t]+/g, ' ');
+    const quoted = unfolded.match(/boundary\s*=\s*"([^"]+)"/i);
+    if (quoted) return quoted[1];
+    return unfolded.match(/boundary\s*=\s*([^;\s]+)/i)?.[1] ?? '';
   }
 
   private buildGmailThreadUrl(threadId: string): string {
