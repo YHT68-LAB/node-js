@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, MailOpen, RefreshCw, Save, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown, MailOpen, RefreshCw, Save, SlidersHorizontal, X } from 'lucide-react';
+
+const STARTED_AT_COOKIE = 'jobReviewStartedAt';
 
 type SalaryRangeUsdYear = {
   text: string;
@@ -85,7 +87,12 @@ export function App() {
   const [error, setError] = useState<string>('');
   const [notice, setNotice] = useState<string>('');
   const [filters, setFilters] = useState<JobFiltersBySource | null>(null);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(true);
   const [loadingElapsedMs, setLoadingElapsedMs] = useState(0);
+  const [startedAt, setStartedAt] = useState<string>(() => getCookie(STARTED_AT_COOKIE));
+  const [isStartConfigOpen, setIsStartConfigOpen] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const startConfigRef = useRef<HTMLDivElement>(null);
 
   async function refreshReviews(filtersToApply: JobFiltersBySource | null = filters) {
     const requestStartedAt = Date.now();
@@ -125,6 +132,14 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 60000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
     if (!isLoading) return;
 
     const startedAt = Date.now();
@@ -135,12 +150,37 @@ export function App() {
     return () => window.clearInterval(intervalId);
   }, [isLoading]);
 
+  useEffect(() => {
+    if (!isStartConfigOpen) return;
+
+    function closeStartConfigOnOutsideClick(event: PointerEvent) {
+      if (!startConfigRef.current?.contains(event.target as Node)) {
+        setIsStartConfigOpen(false);
+      }
+    }
+
+    function closeStartConfigOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsStartConfigOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', closeStartConfigOnOutsideClick);
+    document.addEventListener('keydown', closeStartConfigOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeStartConfigOnOutsideClick);
+      document.removeEventListener('keydown', closeStartConfigOnEscape);
+    };
+  }, [isStartConfigOpen]);
+
   const activeSource = useMemo(() => {
     return data?.sources.find(source => source.source.id === activeSourceId) || data?.sources[0];
   }, [activeSourceId, data]);
 
   const activeReview = activeSource ? (showFiltered ? activeSource.filteredReview : activeSource.review) : null;
   const activeFilter = activeSource && filters ? filters[activeSource.source.id] : null;
+  const startedElapsed = startedAt ? formatStartedElapsed(startedAt, nowMs) : '';
+  const startRelation = startedAt && isFutureDateTime(startedAt, nowMs) ? 'to' : 'since';
 
   function updateActiveFilter(updates: Partial<JobFilterConfig>) {
     if (!activeSource || !filters) return;
@@ -184,19 +224,63 @@ export function App() {
     }
   }
 
+  function updateStartedAt(value: string) {
+    setStartedAt(value);
+    setNowMs(Date.now());
+
+    if (value) {
+      setCookie(STARTED_AT_COOKIE, value);
+    } else {
+      deleteCookie(STARTED_AT_COOKIE);
+    }
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
         <div>
           <p className="eyebrow">Gmail job alerts</p>
           <h1>Job Email Review</h1>
-          <p className="subtitle">
-            {isLoading
-              ? `Loading Gmail results... ${formatDuration(loadingElapsedMs)} elapsed`
-              : data
-              ? `Refreshed ${formatDateTime(data.refreshedAt)} in ${formatDuration(data.elapsedMs, 2)}`
-              : 'Fetching the latest messages from Gmail...'}
-          </p>
+          <div ref={startConfigRef}>
+            <div className="time-row" aria-label="Review timing">
+              <span className="since-control">
+                <span>{startedAt && startedElapsed ? `${startedElapsed} ${startRelation}` : 'set start datetime'}</span>
+                <button className="time-config-button" type="button" onClick={() => setIsStartConfigOpen(current => !current)}>
+                  {startedAt ? formatDate(startedAt) : 'set start datetime'}
+                </button>
+              </span>
+              <span>
+                {isLoading
+                  ? `Refreshing... ${formatDuration(loadingElapsedMs)} elapsed`
+                  : data
+                  ? `Refreshed ${formatDateTime(data.refreshedAt)} in ${formatDuration(data.elapsedMs, 2)}`
+                  : 'Fetching the latest messages from Gmail...'}
+              </span>
+            </div>
+            {isStartConfigOpen && (
+              <div className="start-config">
+                <label className="sr-only" htmlFor="started-at">
+                  Start
+                </label>
+                <input
+                  id="started-at"
+                  type="datetime-local"
+                  value={startedAt}
+                  onChange={event => updateStartedAt(event.target.value)}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter' || event.key === 'Escape') {
+                      setIsStartConfigOpen(false);
+                    }
+                  }}
+                />
+                {startedAt && (
+                  <button className="icon-button" type="button" title="Clear start" onClick={() => updateStartedAt('')}>
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <button className="icon-text-button" onClick={() => refreshReviews()} disabled={isLoading}>
           <RefreshCw size={18} className={isLoading ? 'spin' : ''} />
@@ -234,60 +318,70 @@ export function App() {
       {activeReview ? (
         <>
           {activeFilter && (
-            <section className="filter-panel" aria-label={`${activeReview.summary.displayName} filters`}>
-              <div className="filter-title">
+            <section className={isFilterPanelOpen ? 'filter-panel open' : 'filter-panel'} aria-label={`${activeReview.summary.displayName} filters`}>
+              <button
+                className="filter-title"
+                type="button"
+                aria-expanded={isFilterPanelOpen}
+                onClick={() => setIsFilterPanelOpen(current => !current)}
+              >
                 <SlidersHorizontal size={18} />
                 <div>
                   <h2>{activeSource?.source.id} filters</h2>
-                  <p>These settings apply to the filtered result view.</p>
+                  {isFilterPanelOpen && <p>These settings apply to the filtered result view.</p>}
                 </div>
-              </div>
+                <ChevronDown className="filter-fold-icon" size={18} aria-hidden="true" />
+              </button>
 
-              <label className="check-field">
-                <input
-                  type="checkbox"
-                  checked={activeFilter.dedupe}
-                  onChange={event => updateActiveFilter({ dedupe: event.target.checked })}
-                />
-                <span>Remove duplicate jobs</span>
-              </label>
+              {isFilterPanelOpen && (
+                <>
+                  <label className="check-field">
+                    <input
+                      type="checkbox"
+                      checked={activeFilter.dedupe}
+                      onChange={event => updateActiveFilter({ dedupe: event.target.checked })}
+                    />
+                    <span>Remove duplicate jobs</span>
+                  </label>
 
-              <label className="number-field">
-                <span>Minimum salary/year</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000"
-                  placeholder="No minimum"
-                  value={activeFilter.minSalaryUsdYear ?? ''}
-                  onChange={event => {
-                    const value = event.target.value.trim();
-                    updateActiveFilter({
-                      minSalaryUsdYear: value ? Number(value) : undefined
-                    });
-                  }}
-                />
-              </label>
+                  <label className="number-field">
+                    <span>Minimum salary/year</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1000"
+                      placeholder="No minimum"
+                      value={activeFilter.minSalaryUsdYear ?? ''}
+                      onChange={event => {
+                        const value = event.target.value.trim();
+                        updateActiveFilter({
+                          minSalaryUsdYear: value ? Number(value) : undefined
+                        });
+                      }}
+                    />
+                  </label>
 
-              <label className="check-field">
-                <input
-                  type="checkbox"
-                  checked={Boolean(activeFilter.requireSalaryForMinSalaryFilter)}
-                  onChange={event => updateActiveFilter({ requireSalaryForMinSalaryFilter: event.target.checked })}
-                />
-                <span>Hide jobs without salary when salary filter is set</span>
-              </label>
+                  <label className="check-field">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(activeFilter.requireSalaryForMinSalaryFilter)}
+                      onChange={event => updateActiveFilter({ requireSalaryForMinSalaryFilter: event.target.checked })}
+                    />
+                    <span>Hide jobs without salary when salary filter is set</span>
+                  </label>
 
-              <div className="filter-actions">
-                <button className="icon-text-button" onClick={() => refreshReviews(filters)} disabled={isLoading}>
-                  <RefreshCw size={17} className={isLoading ? 'spin' : ''} />
-                  <span>Apply filters</span>
-                </button>
-                <button className="icon-text-button" onClick={saveFiltersAsDefaults} disabled={isSavingFilters || !filters}>
-                  <Save size={17} />
-                  <span>{isSavingFilters ? 'Saving' : 'Save defaults'}</span>
-                </button>
-              </div>
+                  <div className="filter-actions">
+                    <button className="icon-text-button" onClick={() => refreshReviews(filters)} disabled={isLoading}>
+                      <RefreshCw size={17} className={isLoading ? 'spin' : ''} />
+                      <span>Apply filters</span>
+                    </button>
+                    <button className="icon-text-button" onClick={saveFiltersAsDefaults} disabled={isSavingFilters || !filters}>
+                      <Save size={17} />
+                      <span>{isSavingFilters ? 'Saving' : 'Save defaults'}</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </section>
           )}
 
@@ -405,4 +499,59 @@ function formatDateTime(value: string): string {
         dateStyle: 'medium',
         timeStyle: 'short'
       });
+}
+
+function formatDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const today = new Date();
+  if (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  ) {
+    return 'Today';
+  }
+
+  return date.toLocaleDateString(undefined, {
+    dateStyle: 'medium'
+  });
+}
+
+function formatStartedElapsed(value: string, nowMs: number): string {
+  const startMs = new Date(value).getTime();
+  if (Number.isNaN(startMs)) return '';
+
+  const elapsedMs = nowMs - startMs;
+  const absoluteElapsedMs = Math.abs(elapsedMs);
+  const totalHours = Math.floor(absoluteElapsedMs / (1000 * 60 * 60));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+
+  return `${days} days ${hours} hours`;
+}
+
+function isFutureDateTime(value: string, nowMs: number): boolean {
+  const dateMs = new Date(value).getTime();
+  return !Number.isNaN(dateMs) && dateMs > nowMs;
+}
+
+function getCookie(name: string): string {
+  if (typeof document === 'undefined') return '';
+
+  const cookie = document.cookie
+    .split('; ')
+    .find(part => part.startsWith(`${encodeURIComponent(name)}=`));
+
+  return cookie ? decodeURIComponent(cookie.split('=').slice(1).join('=')) : '';
+}
+
+function setCookie(name: string, value: string) {
+  const maxAgeSeconds = 60 * 60 * 24 * 365;
+  document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; max-age=${maxAgeSeconds}; path=/; samesite=lax`;
+}
+
+function deleteCookie(name: string) {
+  document.cookie = `${encodeURIComponent(name)}=; max-age=0; path=/; samesite=lax`;
 }

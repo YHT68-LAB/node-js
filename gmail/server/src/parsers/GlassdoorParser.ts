@@ -5,7 +5,9 @@ import { parseSalaryUsdYear } from '../utils/salary';
 
 const GLASSDOOR = {
   REGEX: {
-    JOB_ANCHOR: /<a\b[^>]*\bhref\s*=\s*"([^"]*glassdoor\.com\/partner\/jobListing\.htm[^"]*)"[^>]*>([\s\S]*?)<\/a>/gi,
+    ANCHOR_OPEN: /<a\b[^>]*>/gi,
+    HREF: /\bhref\s*=\s*"([^"<>]+)"/i,
+    JOB_LISTING_LINK: /glassdoor\.com\/partner\/jobListing\.htm/i,
     TEXT_SECTION_SPLIT: /\n\s*\n-{0,}\s*\n|\n-{8,}\n|\n_{8,}\n/,
     URL: /https?:\/\/\S+/gi,
     URL_TEST: /https?:\/\/\S+/i,
@@ -15,7 +17,7 @@ const GLASSDOOR = {
     TITLE_COMPANY_AT: /^(.*)\s+at\s+(.*)$/i
   },
   CLASS: {
-    COMPANY: 'gd-628b46d9ce',
+    COMPANY: ['gd-628b46d9ce', 'gd-8c81e4c746'],
     TITLE: 'gd-6c2846d4dc',
     DETAILS: 'gd-28d35bae2f',
     AGE: 'gd-764e661c5b',
@@ -53,16 +55,22 @@ export class GlassdoorEmailParser extends HtmlJobEmailParser {
   protected parseJobsFromHtml(html: string): RawJobPosting[] {
     this.resetJobRecords();
 
-    for (const match of html.matchAll(GLASSDOOR.REGEX.JOB_ANCHOR)) {
-      const href = this.decodeHtmlText(match[1]).replace(/&amp;/g, '&').trim();
-      const inner = match[2] ?? '';
+    for (const match of html.matchAll(GLASSDOOR.REGEX.ANCHOR_OPEN)) {
+      const href = this.extractJobHref(match[0]);
+      if (!href) continue;
 
-      const company = this.extractByClass(inner, GLASSDOOR.CLASS.COMPANY);
-      const title = this.extractByClass(inner, GLASSDOOR.CLASS.TITLE);
+      const anchorEnd = html.indexOf('</a>', match.index + match[0].length);
+      if (anchorEnd === -1) continue;
+
+      const inner = html.slice(match.index + match[0].length, anchorEnd);
+
+      const fallbackFields = this.extractFromCurrentCardMarkup(inner);
+      const company = this.extractByAnyClass(inner, GLASSDOOR.CLASS.COMPANY) || fallbackFields.company;
+      const title = this.extractByClass(inner, GLASSDOOR.CLASS.TITLE) || fallbackFields.title;
       const detailsTexts = this.extractAllByClass(inner, GLASSDOOR.CLASS.DETAILS);
 
-      const location = detailsTexts.find(text => text && !text.includes('$') && !GLASSDOOR.REGEX.ESTIMATED_SALARY_SUFFIX.test(text)) ?? '';
-      const salaryText = detailsTexts.find(text => text && text.includes('$')) ?? '';
+      const location = detailsTexts.find(text => text && !text.includes('$') && !GLASSDOOR.REGEX.ESTIMATED_SALARY_SUFFIX.test(text)) ?? fallbackFields.location;
+      const salaryText = detailsTexts.find(text => text && text.includes('$')) ?? fallbackFields.salaryText;
       const salary = salaryText ? parseSalaryUsdYear(salaryText) : undefined;
       if (!href || !title || !company || !location) continue;
 
@@ -92,6 +100,8 @@ export class GlassdoorEmailParser extends HtmlJobEmailParser {
   }
 
   protected parseJobsFromText(text: string): RawJobPosting[] {
+    if (this.looksLikeHtml(text)) return [];
+
     const sections = text.split(GLASSDOOR.REGEX.TEXT_SECTION_SPLIT);
     const jobs: RawJobPosting[] = [];
 
@@ -136,6 +146,55 @@ export class GlassdoorEmailParser extends HtmlJobEmailParser {
     const match = html.match(regex);
     if (!match) return '';
     return this.cleanHtmlText(match[1] ?? '');
+  }
+
+  private extractJobHref(anchorOpenTag: string): string {
+    const rawHref = anchorOpenTag.match(GLASSDOOR.REGEX.HREF)?.[1] ?? '';
+    const href = this.decodeHtmlText(rawHref).replace(/&amp;/g, '&').trim();
+    if (!href) return '';
+    if (!GLASSDOOR.REGEX.URL_TEST.test(href)) return '';
+    if (!GLASSDOOR.REGEX.JOB_LISTING_LINK.test(href)) return '';
+    return href;
+  }
+
+  private extractFromCurrentCardMarkup(html: string): { company: string; title: string; location: string; salaryText: string } {
+    const paragraphs = this.extractAllTagText(html, 'p');
+    const paragraphNodes = this.extractAllTagNodes(html, 'p');
+    const spans = this.extractAllTagText(html, 'span');
+    const company = spans.find(text => text && !/^\d+(\.\d+)?\s*★$/.test(text)) ?? '';
+    const title = paragraphNodes.find(node =>
+      /font-size\s*:\s*14px/i.test(node.attributes) &&
+      /font-weight\s*:\s*600/i.test(node.attributes) &&
+      !this.looksLikeSalary(node.text)
+    )?.text ?? '';
+    const location = paragraphs.find(text => this.looksLikeLocation(text)) ?? '';
+    const salaryText = paragraphs.find(text => this.looksLikeSalary(text)) ?? '';
+    return { company, title, location, salaryText };
+  }
+
+  private extractAllTagNodes(html: string, tagName: string): Array<{ attributes: string; text: string }> {
+    const regex = new RegExp(`<${tagName}\\b([^>]*)>([\\s\\S]*?)<\\/${tagName}>`, 'gi');
+    return [...html.matchAll(regex)]
+      .map(match => ({
+        attributes: match[1] ?? '',
+        text: this.cleanHtmlText(match[2] ?? '')
+      }))
+      .filter(node => node.text);
+  }
+
+  private extractAllTagText(html: string, tagName: string): string[] {
+    const regex = new RegExp(`<${tagName}\\b[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'gi');
+    return [...html.matchAll(regex)]
+      .map(match => this.cleanHtmlText(match[1] ?? ''))
+      .filter(Boolean);
+  }
+
+  private extractByAnyClass(html: string, classNames: readonly string[]): string {
+    for (const className of classNames) {
+      const text = this.extractByClass(html, className);
+      if (text) return text;
+    }
+    return '';
   }
 
   private extractAllByClass(html: string, className: string): string[] {
